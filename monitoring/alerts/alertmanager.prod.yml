@@ -1,0 +1,49 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Alertmanager — staging / production
+# Secrets are read from files (mounted from AWS Secrets Manager / a k8s secret);
+# nothing sensitive is committed. Expected mounts:
+#   /etc/alertmanager/secrets/slack_webhook_url
+#   /etc/alertmanager/secrets/pagerduty_routing_key
+# ═══════════════════════════════════════════════════════════════════════════════
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: slack-data-eng
+  group_by: [alertname, severity]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: [severity="critical"]
+      receiver: pagerduty-oncall
+      repeat_interval: 1h
+      continue: true      # critical alerts also go to Slack
+    - matchers: [severity="critical"]
+      receiver: slack-data-eng
+
+receivers:
+  - name: slack-data-eng
+    slack_configs:
+      - api_url_file: /etc/alertmanager/secrets/slack_webhook_url
+        channel: "#data-platform-alerts"
+        send_resolved: true
+        title: "[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }} ({{ .CommonLabels.severity }})"
+        text: |-
+          {{ range .Alerts }}*{{ .Annotations.summary }}*
+          {{ .Annotations.description }}
+          {{ end }}
+
+  - name: pagerduty-oncall
+    pagerduty_configs:
+      - routing_key_file: /etc/alertmanager/secrets/pagerduty_routing_key
+        send_resolved: true
+        description: "{{ .CommonAnnotations.summary }}"
+
+inhibit_rules:
+  - source_matchers: [severity="critical"]
+    target_matchers: [severity="warning"]
+    equal: [alertname]
+  - source_matchers: [alertname="APIDown"]
+    target_matchers: [alertname=~"API.*"]

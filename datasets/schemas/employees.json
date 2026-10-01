@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://retailnexus.com/schemas/employees/v1",
+  "title": "Employee",
+  "description": "Employee record with compensation, department, and employment status",
+  "type": "object",
+  "required": ["employee_id", "first_name", "last_name", "department", "level", "hire_date", "is_active", "created_at"],
+  "properties": {
+    "employee_id":      { "type": "string", "pattern": "^EMP-[0-9]{7}$" },
+    "first_name":       { "type": "string" },
+    "last_name":        { "type": "string" },
+    "email":            { "type": "string", "format": "email" },
+    "department":       { "type": "string" },
+    "job_title":        { "type": "string" },
+    "level":            { "type": "string" },
+    "manager_id":       { "type": ["string", "null"] },
+    "store_id":         { "type": ["string", "null"] },
+    "base_salary":      { "type": "number", "minimum": 0 },
+    "bonus_pct":        { "type": "number", "minimum": 0 },
+    "hire_date":        { "type": "string", "format": "date" },
+    "termination_date": { "type": ["string", "null"], "format": "date" },
+    "is_active":        { "type": "boolean" },
+    "supplier_id":      { "type": ["string", "null"] },
+    "created_at":       { "type": "string", "format": "date-time" },
+    "updated_at":       { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,34 @@
+{
+  "index_patterns": ["lakehouse-*"],
+  "priority": 200,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index.lifecycle.name": "lakehouse-logs"
+    },
+    "mappings": {
+      "dynamic": true,
+      "properties": {
+        "@timestamp":  { "type": "date" },
+        "level":       { "type": "keyword" },
+        "service":     { "type": "keyword" },
+        "environment": { "type": "keyword" },
+        "project":     { "type": "keyword" },
+        "logger":      { "type": "keyword" },
+        "event":       { "type": "keyword" },
+        "layer":       { "type": "keyword" },
+        "domain":      { "type": "keyword" },
+        "check":       { "type": "keyword" },
+        "column":      { "type": "keyword" },
+        "status":      { "type": "keyword" },
+        "rule":        { "type": "keyword" },
+        "severity":    { "type": "keyword" },
+        "metric":      { "type": "double" },
+        "threshold":   { "type": "double" },
+        "message":     { "type": "text" },
+        "error":       { "type": "text" }
+      }
+    }
+  }
+}

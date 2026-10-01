@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://retailnexus.com/schemas/suppliers/v1",
+  "title": "Supplier",
+  "description": "Merchandise supplier with performance metrics and tier classification",
+  "type": "object",
+  "required": ["supplier_id", "name", "tier", "country", "is_active", "created_at"],
+  "properties": {
+    "supplier_id":        { "type": "string", "pattern": "^SUP-[0-9]{6}$" },
+    "name":               { "type": "string" },
+    "tier":               { "type": "string", "enum": ["A", "B", "C"] },
+    "country":            { "type": "string" },
+    "city":               { "type": "string" },
+    "contact_email":      { "type": "string", "format": "email" },
+    "contact_phone":      { "type": "string" },
+    "lead_time_days":     { "type": "integer", "minimum": 1 },
+    "on_time_rate":       { "type": "number", "minimum": 0, "maximum": 1 },
+    "quality_score":      { "type": "number", "minimum": 0, "maximum": 10 },
+    "payment_terms":      { "type": "string" },
+    "certifications":     { "type": "array", "items": { "type": "string" } },
+    "is_active":          { "type": "boolean" },
+    "onboarded_date":     { "type": "string", "format": "date" },
+    "created_at":         { "type": "string", "format": "date-time" },
+    "updated_at":         { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

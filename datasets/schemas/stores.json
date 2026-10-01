@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://retailnexus.com/schemas/stores/v1",
+  "title": "Store",
+  "description": "Retail store location with type, geography, and operational attributes",
+  "type": "object",
+  "required": ["store_id", "name", "store_type", "city", "state", "region", "is_active", "created_at"],
+  "properties": {
+    "store_id":       { "type": "string" },
+    "name":           { "type": "string" },
+    "store_type":     { "type": "string", "enum": ["flagship", "standard", "express", "outlet", "warehouse"] },
+    "address":        { "type": "string" },
+    "city":           { "type": "string" },
+    "state":          { "type": "string" },
+    "postal_code":    { "type": "string" },
+    "region":         { "type": "string" },
+    "sq_footage":     { "type": "integer", "minimum": 0 },
+    "num_employees":  { "type": "integer", "minimum": 0 },
+    "is_active":      { "type": "boolean" },
+    "opened_date":    { "type": "string", "format": "date" },
+    "closed_date":    { "type": ["string", "null"], "format": "date" },
+    "created_at":     { "type": "string", "format": "date-time" },
+    "updated_at":     { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

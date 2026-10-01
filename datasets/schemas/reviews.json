@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://retailnexus.com/schemas/reviews/v1",
+  "title": "ProductReview",
+  "description": "Customer product review with rating, sentiment, and helpfulness votes",
+  "type": "object",
+  "required": [
+    "review_id", "customer_id", "sku", "rating", "title", "body",
+    "is_verified_purchase", "is_visible", "created_at"
+  ],
+  "properties": {
+    "review_id":              { "type": "string", "pattern": "^REV-[0-9]{10}$" },
+    "customer_id":            { "type": "string" },
+    "sku":                    { "type": "string" },
+    "product_name":           { "type": "string" },
+    "order_id":               { "type": ["string", "null"] },
+    "rating":                 { "type": "integer", "minimum": 1, "maximum": 5 },
+    "title":                  { "type": "string", "minLength": 1, "maxLength": 200 },
+    "body":                   { "type": "string", "minLength": 1 },
+    "sentiment":              { "type": "string", "enum": ["positive", "neutral", "negative"] },
+    "is_verified_purchase":   { "type": "boolean" },
+    "helpful_votes":          { "type": "integer", "minimum": 0 },
+    "not_helpful_votes":      { "type": "integer", "minimum": 0 },
+    "is_visible":             { "type": "boolean" },
+    "response_from_seller":   { "type": ["string", "null"] },
+    "images_count":           { "type": "integer", "minimum": 0 },
+    "created_at":             { "type": "string", "format": "date-time" },
+    "updated_at":             { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,45 @@
+name: Bug report
+description: Something in the pipeline, API, or infrastructure is not behaving as documented
+labels: [bug]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Bronze ingestion
+        - Silver processing / data contracts
+        - Gold models
+        - Warehouse loads
+        - Data quality
+        - Airflow / orchestration
+        - API
+        - Monitoring / alerting
+        - Terraform / deployment
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Include the domain/table, DAG and task ids, and the run id or batch id if you have them.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Commands (`make ...`, `spark-submit ...`), scale factor, environment (dev/staging/prod).
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Structured JSON log lines (or Kibana links). Redact secrets and PII.
+      render: shell

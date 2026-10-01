@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://retailnexus.com/schemas/customers/v1",
+  "title": "Customer",
+  "description": "RetailNexus customer profile including loyalty, demographics, and channel preferences",
+  "type": "object",
+  "required": [
+    "customer_id", "first_name", "last_name", "email", "segment",
+    "loyalty_tier", "country", "is_active", "created_at"
+  ],
+  "properties": {
+    "customer_id":        { "type": "string", "pattern": "^CUST-[0-9]{8}$" },
+    "first_name":         { "type": "string", "minLength": 1, "maxLength": 100 },
+    "last_name":          { "type": "string", "minLength": 1, "maxLength": 100 },
+    "email":              { "type": "string", "format": "email" },
+    "phone":              { "type": ["string", "null"] },
+    "date_of_birth":      { "type": ["string", "null"], "format": "date" },
+    "gender":             { "type": "string", "enum": ["M", "F", "Non-binary", "Unknown"] },
+    "segment":            { "type": "string", "enum": ["platinum", "gold", "silver", "bronze"] },
+    "loyalty_tier":       { "type": "string", "enum": ["diamond", "platinum", "gold", "silver", "bronze"] },
+    "loyalty_points":     { "type": "integer", "minimum": 0 },
+    "country":            { "type": "string" },
+    "state":              { "type": ["string", "null"] },
+    "city":               { "type": "string" },
+    "postal_code":        { "type": "string" },
+    "address_line1":      { "type": "string" },
+    "channel_preference": { "type": "string", "enum": ["email", "sms", "push", "none"] },
+    "acquisition_channel":{ "type": "string" },
+    "is_email_verified":  { "type": "boolean" },
+    "is_sms_opted_in":    { "type": "boolean" },
+    "is_active":          { "type": "boolean" },
+    "last_order_at":      { "type": ["string", "null"], "format": "date-time" },
+    "lifetime_order_count":{ "type": "integer", "minimum": 0 },
+    "lifetime_spend":     { "type": "number", "minimum": 0 },
+    "created_at":         { "type": "string", "format": "date-time" },
+    "updated_at":         { "type": "string", "format": "date-time" },
+    "source_system":      { "type": "string" }
+  },
+  "additionalProperties": false
+}

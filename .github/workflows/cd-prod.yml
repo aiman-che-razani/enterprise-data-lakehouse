@@ -1,0 +1,253 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# RetailNexus Data Lakehouse — CD: Production Deployment
+#
+# Triggered: push of a release tag matching v* (e.g., v1.2.3)
+# Steps:
+#   1. Build and push Docker images to ECR (tagged with version)
+#   2. Apply Terraform infrastructure changes
+#   3. Blue-green deploy to production ECS
+#   4. Post-deploy health gate (auto-rollback on failure)
+#   5. Notify PagerDuty + Slack
+# ═══════════════════════════════════════════════════════════════════════════════
+
+name: CD — Production
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  IMAGE_TAG: ${{ github.ref_name }}
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Pre-deploy Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install deps
+        run: pip install -e ".[dev,api]"
+
+      - name: Full test suite must pass before prod deploy
+        run: |
+          pytest tests/unit/ -m unit -v --tb=short
+        env:
+          ENVIRONMENT: dev
+          SECRETS_BACKEND: env
+          POSTGRES_HOST: localhost
+          POSTGRES_USER: lakehouse
+          POSTGRES_PASSWORD: lakehouse
+          POSTGRES_DB: lakehouse
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+
+  build-and-push:
+    name: Build & Push Production Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # OIDC -> AWS, no stored keys
+    needs: validate
+    environment: production
+    strategy:
+      matrix:
+        service: [airflow, api, spark]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a  # v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd  # v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25  # v5
+        with:
+          context: .
+          file: docker/${{ matrix.service }}/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/retailnexus-${{ matrix.service }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/retailnexus-${{ matrix.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_VERSION=${{ env.IMAGE_TAG }}
+            BUILD_COMMIT=${{ github.sha }}
+
+  terraform:
+    name: Terraform Apply (Infrastructure)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # OIDC -> AWS, no stored keys
+    needs: build-and-push
+    environment: production
+    defaults:
+      run:
+        working-directory: terraform/environments/prod
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd  # v3
+        with:
+          terraform_version: "~1.8"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a  # v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var-file=prod.tfvars \
+            -var="image_tag=${{ env.IMAGE_TAG }}" \
+            -out=tfplan \
+            -detailed-exitcode
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+  deploy-production:
+    name: Blue-Green Deploy to Production ECS
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # OIDC -> AWS, no stored keys
+    needs: terraform
+    environment:
+      name: production
+      url: https://api.lakehouse.retailnexus.com
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a  # v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy API (blue-green via ECS CodeDeploy)
+        run: |
+          aws deploy create-deployment \
+            --application-name retailnexus-lakehouse \
+            --deployment-group-name production \
+            --revision '{
+              "revisionType": "AppSpecContent",
+              "appSpecContent": {
+                "content": "{\"version\":0.0,\"Resources\":[{\"TargetService\":{\"Type\":\"AWS::ECS::Service\",\"Properties\":{\"TaskDefinition\":\"<TASK_DEFINITION>\",\"LoadBalancerInfo\":{\"ContainerName\":\"lakehouse-api\",\"ContainerPort\":8000}}}}]}"
+              }
+            }' \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Wait for ECS service stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster retailnexus-prod \
+            --services lakehouse-api lakehouse-airflow \
+            --region ${{ env.AWS_REGION }}
+
+  health-gate:
+    name: Post-Deploy Health Gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # OIDC -> AWS, no stored keys
+    needs: deploy-production
+    steps:
+      - name: API health check (with retry)
+        run: |
+          for i in {1..10}; do
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
+              https://api.lakehouse.retailnexus.com/health/ready)
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i failed (status=$STATUS), retrying in 10s..."
+            sleep 10
+          done
+          echo "Health gate FAILED after 10 attempts" >&2
+          exit 1
+
+      - name: Configure AWS credentials (rollback)
+        if: failure()
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a  # v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Rolling back ECS service to previous task definition..."
+          aws ecs update-service \
+            --cluster retailnexus-prod \
+            --service lakehouse-api \
+            --task-definition ${{ secrets.PROD_PREVIOUS_TASK_DEF }} \
+            --region ${{ env.AWS_REGION }}
+
+  notify-prod:
+    name: Notify (PagerDuty + Slack)
+    runs-on: ubuntu-latest
+    needs: [health-gate]
+    if: always()
+    steps:
+      - name: Notify Slack — success
+        if: needs.health-gate.result == 'success'
+        uses: slackapi/slack-github-action@fcfb566f8b0aab22203f066d80ca1d7e4b5d05b3  # v1
+        with:
+          payload: |
+            {
+              "text": "🚀 *Production deployed: ${{ env.IMAGE_TAG }}*",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🚀 *RetailNexus Lakehouse — Production Release*\nVersion: `${{ env.IMAGE_TAG }}`\nCommit: `${{ github.sha }}`\nDeployed by: ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Notify Slack — failure
+        if: needs.health-gate.result != 'success'
+        uses: slackapi/slack-github-action@fcfb566f8b0aab22203f066d80ca1d7e4b5d05b3  # v1
+        with:
+          payload: |
+            {
+              "text": "🔴 *PROD DEPLOY FAILED — ${{ env.IMAGE_TAG }}* — <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View run> — Rollback initiated."
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

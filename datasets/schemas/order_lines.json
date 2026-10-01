@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://retailnexus.com/schemas/order_lines/v1",
+  "title": "OrderLine",
+  "description": "Individual line item within an order including SKU, quantity, and pricing",
+  "type": "object",
+  "required": [
+    "order_line_id", "order_id", "sku", "quantity",
+    "unit_list_price", "unit_price", "line_total", "created_at"
+  ],
+  "properties": {
+    "order_line_id":    { "type": "string", "pattern": "^LINE-[0-9]{12}$" },
+    "order_id":         { "type": "string", "pattern": "^ORD-[0-9]{10}$" },
+    "sku":              { "type": "string" },
+    "product_name":     { "type": "string" },
+    "category":         { "type": "string" },
+    "quantity":         { "type": "integer", "minimum": 1, "maximum": 99 },
+    "unit_list_price":  { "type": "number", "minimum": 0 },
+    "unit_price":       { "type": "number", "minimum": 0 },
+    "discount_pct":     { "type": "number", "minimum": 0, "maximum": 1 },
+    "line_total":       { "type": "number", "minimum": 0 },
+    "is_gift_wrap":     { "type": "boolean" },
+    "created_at":       { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

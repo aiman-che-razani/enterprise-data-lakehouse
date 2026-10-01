@@ -1,0 +1,263 @@
+---
+# RetailNexus Pipeline Alerting Rules
+# Loaded by prometheus.yml via rule_files glob.
+#
+# Conventions (enforced by tests/unit/test_monitoring_config.py):
+#   severity   critical -> page on-call (PagerDuty)   |   warning -> Slack #data-platform-alerts
+#   summary    one line naming what is affected, no severity prefix (severity is a label)
+#   description the measured value and the next action
+#   runbook    anchor in docs/troubleshooting/TROUBLESHOOTING.md (section 10, "Monitoring Alerts")
+# `job` labels must match a job_name in configs/prometheus/prometheus.yml.
+
+groups:
+
+  # ── Pipeline Freshness ───────────────────────────────────────────────────
+  - name: pipeline.freshness
+    interval: 5m
+    rules:
+
+      - alert: BronzeFreshnessBreachCritical
+        expr: |
+          retailnexus_pipeline_bronze_freshness_hours{domain=~"clickstream|iot_sensors"} > 2
+        for: 5m
+        labels:
+          severity: critical
+          team:     data-engineering
+        annotations:
+          summary:     "Bronze data for {{ $labels.domain }} is stale (SLA 2h)"
+          description: |
+            {{ $labels.domain }} last ingested {{ $value | printf "%.1f" }}h ago; the near-real-time SLA is 2h.
+            Next: check the Bronze streaming consumer and the bronze_streaming_health DAG, then Kafka and S3 connectivity.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-bronzefreshnessbreachcritical"
+
+      - alert: BronzeFreshnessBreachWarning
+        expr: |
+          retailnexus_pipeline_bronze_freshness_hours{domain!~"clickstream|iot_sensors|employees|returns|reviews|finance|campaigns"} > 26
+        for: 10m
+        labels:
+          severity: warning
+          team:     data-engineering
+        annotations:
+          summary:     "Bronze data for {{ $labels.domain }} is stale (SLA 26h)"
+          description: |
+            {{ $labels.domain }} last ingested {{ $value | printf "%.1f" }}h ago; the daily SLA is 26h.
+            Next: check the bronze_batch_ingestion DAG run and Spark job logs.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-bronzefreshnessbreachwarning"
+
+      - alert: BronzeFreshnessBreachAnalytical
+        expr: |
+          retailnexus_pipeline_bronze_freshness_hours{domain=~"employees|returns|reviews|finance|campaigns"} > 48
+        for: 15m
+        labels:
+          severity: warning
+          team:     data-engineering
+        annotations:
+          summary:     "Bronze data for {{ $labels.domain }} is stale (SLA 48h)"
+          description: |
+            {{ $labels.domain }} last ingested {{ $value | printf "%.1f" }}h ago; the analytical-domain SLA is 48h.
+            Next: check the bronze_batch_ingestion DAG run for this domain.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-bronzefreshnessbreachanalytical"
+
+  # ── Data Quality (layer level; per-domain rules are in data_quality_alerts.yml) ─
+  - name: pipeline.data_quality
+    interval: 10m
+    rules:
+
+      - alert: DQPassRateCritical
+        expr: retailnexus_dq_pass_rate < 0.75
+        for: 15m
+        labels:
+          severity: critical
+          team:     data-engineering
+        annotations:
+          summary:     "DQ pass rate below 75% for {{ $labels.layer }}"
+          description: |
+            The {{ $labels.layer }} layer scored {{ $value | humanizePercentage }} over the last 24h.
+            Next: query quality.check_results for failed checks; look for upstream corruption or schema drift.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-dqpassratecritical"
+
+      - alert: DQPassRateWarning
+        expr: retailnexus_dq_pass_rate < 0.90
+        for: 20m
+        labels:
+          severity: warning
+          team:     data-engineering
+        annotations:
+          summary:     "DQ pass rate below 90% for {{ $labels.layer }}"
+          description: |
+            The {{ $labels.layer }} layer scored {{ $value | humanizePercentage }} over the last 24h.
+            Next: review the failing domains on the Data Quality dashboard.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-dqpassratewarning"
+
+      - alert: SLAMissesElevated
+        expr: retailnexus_sla_misses_24h > 5
+        for: 5m
+        labels:
+          severity: warning
+          team:     data-engineering
+        annotations:
+          summary:     "More than 5 SLA misses in the last 24h"
+          description: |
+            {{ $value }} SLA misses recorded in 24h (warning above 5, critical above 20).
+            Next: list them with GET /pipeline/sla-misses and check the sla_monitor DAG.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-slamisseselevated"
+
+      - alert: SLAMissesCritical
+        expr: retailnexus_sla_misses_24h > 20
+        for: 5m
+        labels:
+          severity: critical
+          team:     data-engineering
+        annotations:
+          summary:     "More than 20 SLA misses in the last 24h"
+          description: |
+            {{ $value }} SLA misses recorded in 24h; pipeline health is degraded across domains.
+            Next: check Airflow and Spark cluster health first, then GET /pipeline/sla-misses.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-slamissescritical"
+
+  # ── API Health (Prometheus job "fastapi") ────────────────────────────────
+  - name: pipeline.api
+    interval: 1m
+    rules:
+
+      - alert: APIHighErrorRate
+        expr: |
+          sum(rate(http_requests_total{job="fastapi", status="5xx"}[5m]))
+          /
+          sum(rate(http_requests_total{job="fastapi"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team:     data-engineering
+        annotations:
+          summary:     "API 5xx error rate above 5%"
+          description: |
+            {{ $value | humanizePercentage }} of API requests failed with 5xx over 5 minutes.
+            Next: check the API logs for unhandled_exception events and the database pool (/health/ready).
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-apihigherrorrate"
+
+      - alert: APIHighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(http_request_duration_seconds_bucket{job="fastapi"}[5m]))
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          team:     data-engineering
+        annotations:
+          summary:     "API p99 latency above 2s"
+          description: |
+            p99 latency is {{ $value | printf "%.2f" }}s over 5 minutes.
+            Next: look for slow queries (pg_stat_activity) and connection-pool exhaustion.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-apihighlatency"
+
+      - alert: APIDown
+        expr: up{job="fastapi"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team:     data-engineering
+        annotations:
+          summary:     "The RetailNexus API is unreachable"
+          description: |
+            Prometheus has not been able to scrape the FastAPI service for 2 minutes.
+            Next: check the container or ECS service, then GET /health/ready.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-apidown"
+
+  # ── Spark / Infrastructure ────────────────────────────────────────────────
+  - name: pipeline.infrastructure
+    interval: 2m
+    rules:
+
+      - alert: SparkMasterDown
+        expr: up{job="spark-master"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          team:     data-engineering
+        annotations:
+          summary:     "The Spark master is unreachable"
+          description: |
+            Prometheus cannot scrape the Spark master; all Spark jobs will fail until it is back.
+            Next: restart the spark-master service and check its logs.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-sparkmasterdown"
+
+      - alert: SparkWorkerLost
+        expr: metrics_master_aliveWorkers_Value < 1
+        for: 5m
+        labels:
+          severity: critical
+          team:     data-engineering
+        annotations:
+          summary:     "No live Spark workers"
+          description: |
+            The Spark master reports no alive workers, so pipeline processing is halted.
+            Next: check the spark-worker service and its connection to the master on port 7077.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-sparkworkerlost"
+
+      - alert: KafkaConsumerLag
+        expr: |
+          sum by (consumergroup, topic) (kafka_consumergroup_lag{consumergroup=~"lakehouse.*|retailnexus.*"}) > 100000
+        for: 10m
+        labels:
+          severity: warning
+          team:     data-engineering
+        annotations:
+          summary:     "Kafka consumer group {{ $labels.consumergroup }} is lagging on {{ $labels.topic }}"
+          description: |
+            Lag is {{ $value }} messages (threshold 100,000); the streaming job is falling behind.
+            Next: check the Structured Streaming job health and its checkpoint.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-kafkaconsumerlag"
+
+      - alert: MinIOLowSpace
+        expr: minio_cluster_capacity_usable_free_bytes / minio_cluster_capacity_usable_total_bytes < 0.15
+        for: 10m
+        labels:
+          severity: warning
+          team:     infrastructure
+        annotations:
+          summary:     "MinIO has less than 15% free disk space"
+          description: |
+            {{ $value | humanizePercentage }} of MinIO disk is free.
+            Next: run the Delta maintenance DAG (OPTIMIZE + VACUUM) or extend the volume.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-miniolowspace"
+
+      - alert: KafkaBrokerDown
+        expr: kafka_brokers < 1
+        for: 3m
+        labels:
+          severity: critical
+          team:     data-engineering
+        annotations:
+          summary:     "No Kafka brokers visible to the exporter"
+          description: |
+            kafka_brokers is {{ $value }}; producers and the streaming consumers cannot make progress.
+            Next: check the kafka and zookeeper services and their logs.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-kafkabrokerdown"
+
+      - alert: MinIOUnhealthy
+        expr: minio_cluster_health_status == 0
+        for: 5m
+        labels:
+          severity: critical
+          team:     infrastructure
+        annotations:
+          summary:     "MinIO reports an unhealthy cluster"
+          description: |
+            minio_cluster_health_status is 0 (drives offline or write quorum lost), so Delta reads and writes will fail.
+            Next: check the minio service logs and disk health.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-miniounhealthy"
+
+      - alert: AirflowSchedulerSilent
+        expr: absent(airflow_scheduler_heartbeat) or rate(airflow_scheduler_heartbeat[5m]) == 0
+        for: 10m
+        labels:
+          severity: critical
+          team:     data-engineering
+        annotations:
+          summary:     "The Airflow scheduler is not sending heartbeats"
+          description: |
+            No scheduler heartbeat has reached statsd-exporter for 10 minutes, so no DAG will be scheduled.
+            Next: restart airflow-scheduler and check its logs; confirm statsd-exporter is up.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-airflowschedulersilent"

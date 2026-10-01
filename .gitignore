@@ -1,0 +1,137 @@
+# ─── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+.eggs/
+*.egg-link
+*.pyc
+*.pyo
+MANIFEST
+
+# ─── Virtual environments ─────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.env.local
+.envrc
+
+# ─── Environment files (keep .env.example, ignore real .env) ─────────────────
+.env
+.env.*
+!.env.example
+
+# ─── Testing & coverage ───────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+nosetests.xml
+test-results/
+
+# ─── Type checking ────────────────────────────────────────────────────────────
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+
+# ─── Linting ─────────────────────────────────────────────────────────────────
+.ruff_cache/
+
+# ─── IDEs ────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ─── Jupyter ─────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ─── Spark ───────────────────────────────────────────────────────────────────
+spark-warehouse/
+metastore_db/
+derby.log
+*.crc
+_temporary/
+
+# ─── Airflow ─────────────────────────────────────────────────────────────────
+airflow/logs/
+airflow/plugins/__pycache__/
+airflow.db
+airflow.cfg
+webserver_config.py
+standalone_admin_password.txt
+unittests.cfg
+
+# ─── Delta Lake ───────────────────────────────────────────────────────────────
+_delta_log/
+*.parquet
+*.snappy.parquet
+
+# ─── Docker ──────────────────────────────────────────────────────────────────
+.docker/
+
+# ─── Terraform ───────────────────────────────────────────────────────────────
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+# Per-environment sizing files hold no secrets and are required by CD (-var-file=<env>.tfvars)
+!terraform/environments/*/*.tfvars
+.terraform.lock.hcl
+terraform.tfplan
+
+# ─── Datasets (generated, never commit raw data) ─────────────────────────────
+datasets/raw/
+datasets/samples/
+!datasets/raw/.gitkeep
+!datasets/samples/.gitkeep
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+*.log
+logs/
+*.log.*
+
+# ─── Secrets ─────────────────────────────────────────────────────────────────
+*.pem
+*.key
+*.crt
+*.p12
+secrets/
+credentials/
+
+# ─── Build artifacts ─────────────────────────────────────────────────────────
+*.jar
+!docker/spark/jars/*.jar
+target/
+*.class
+
+# ─── Misc ────────────────────────────────────────────────────────────────────
+.cache/
+*.pid
+*.seed
+*.bak
+*.tmp
+*.temp
+.idea_modules/

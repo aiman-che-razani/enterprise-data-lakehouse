@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://retailnexus.com/schemas/iot_sensors/v1",
+  "title": "IotSensorReading",
+  "description": "Time-series IoT sensor reading from retail store environmental and traffic sensors",
+  "type": "object",
+  "required": [
+    "reading_id", "sensor_id", "store_id", "sensor_type",
+    "value", "unit", "alert_triggered", "reading_at"
+  ],
+  "properties": {
+    "reading_id":             { "type": "string", "pattern": "^IOT-[0-9]{12}$" },
+    "sensor_id":              { "type": "string" },
+    "store_id":               { "type": "string" },
+    "sensor_type":            { "type": "string", "enum": ["temperature_celsius", "humidity_pct", "co2_ppm", "foot_traffic_count", "energy_kwh", "refrigeration_temp_celsius", "noise_db", "air_quality_index"] },
+    "value":                  { "type": "number" },
+    "unit":                   { "type": "string" },
+    "alert_triggered":        { "type": "boolean" },
+    "alert_threshold_low":    { "type": "number" },
+    "alert_threshold_high":   { "type": "number" },
+    "is_anomaly":             { "type": "boolean" },
+    "battery_pct":            { "type": "number", "minimum": 0, "maximum": 100 },
+    "signal_rssi_dbm":        { "type": "integer" },
+    "reading_quality":        { "type": "string", "enum": ["good", "fair", "poor"] },
+    "firmware_version":       { "type": "string" },
+    "reading_at":             { "type": "string", "format": "date-time" },
+    "ingested_at":            { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

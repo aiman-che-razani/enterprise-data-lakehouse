@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://retailnexus.com/schemas/clickstream/v1",
+  "title": "ClickstreamEvent",
+  "description": "Web and mobile session event for behavioral analytics and funnel analysis",
+  "type": "object",
+  "required": [
+    "event_id", "session_id", "anonymous_id", "event_type",
+    "page_url", "device_type", "browser", "os", "ip_address", "created_at"
+  ],
+  "properties": {
+    "event_id":           { "type": "string" },
+    "session_id":         { "type": "string" },
+    "customer_id":        { "type": ["string", "null"] },
+    "anonymous_id":       { "type": "string" },
+    "event_type":         { "type": "string", "enum": ["page_view", "search", "product_view", "add_to_cart", "remove_from_cart", "wishlist_add", "checkout_start", "checkout_step", "purchase", "account_login", "account_logout"] },
+    "page_url":           { "type": "string", "format": "uri" },
+    "referrer_url":       { "type": ["string", "null"] },
+    "sku":                { "type": ["string", "null"] },
+    "campaign_id":        { "type": ["string", "null"] },
+    "utm_source":         { "type": ["string", "null"] },
+    "utm_medium":         { "type": ["string", "null"] },
+    "device_type":        { "type": "string", "enum": ["desktop", "mobile", "tablet"] },
+    "browser":            { "type": "string" },
+    "os":                 { "type": "string" },
+    "ip_address":         { "type": "string", "format": "ipv4" },
+    "session_duration_ms":{ "type": "integer", "minimum": 0 },
+    "is_bounce":          { "type": "boolean" },
+    "search_query":       { "type": ["string", "null"] },
+    "created_at":         { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

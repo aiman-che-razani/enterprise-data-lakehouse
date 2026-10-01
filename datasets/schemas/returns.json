@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://retailnexus.com/schemas/returns/v1",
+  "title": "Return",
+  "description": "Merchandise return request with reason, condition, and refund information",
+  "type": "object",
+  "required": [
+    "return_id", "order_id", "customer_id", "sku",
+    "quantity", "reason", "status", "initiated_at"
+  ],
+  "properties": {
+    "return_id":        { "type": "string", "pattern": "^RET-[0-9]{10}$" },
+    "order_id":         { "type": "string" },
+    "order_line_id":    { "type": "string" },
+    "customer_id":      { "type": "string" },
+    "sku":              { "type": "string" },
+    "product_name":     { "type": "string" },
+    "quantity":         { "type": "integer", "minimum": 1 },
+    "unit_price":       { "type": "number", "minimum": 0 },
+    "refund_amount":    { "type": "number", "minimum": 0 },
+    "reason":           { "type": "string", "enum": ["size_issue", "changed_mind", "wrong_item", "defective", "not_as_described", "arrived_too_late"] },
+    "status":           { "type": "string", "enum": ["approved", "received", "processed", "refunded", "rejected"] },
+    "condition":        { "type": "string", "enum": ["unopened", "like_new", "good", "acceptable", "damaged"] },
+    "restocking_fee":   { "type": "number", "minimum": 0 },
+    "is_restockable":   { "type": "boolean" },
+    "initiated_at":     { "type": "string", "format": "date-time" },
+    "received_at":      { "type": "string", "format": "date-time" },
+    "processed_at":     { "type": ["string", "null"], "format": "date-time" },
+    "refunded_at":      { "type": ["string", "null"], "format": "date-time" },
+    "created_at":       { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

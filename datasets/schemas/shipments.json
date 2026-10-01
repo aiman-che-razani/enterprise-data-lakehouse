@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://retailnexus.com/schemas/shipments/v1",
+  "title": "Shipment",
+  "description": "Outbound shipment record including carrier, tracking, and delivery timestamps",
+  "type": "object",
+  "required": [
+    "shipment_id", "order_id", "carrier", "tracking_number",
+    "status", "ship_date", "estimated_delivery_date", "created_at"
+  ],
+  "properties": {
+    "shipment_id":              { "type": "string" },
+    "order_id":                 { "type": "string", "pattern": "^ORD-[0-9]{10}$" },
+    "customer_id":              { "type": "string" },
+    "warehouse_id":             { "type": "string" },
+    "carrier":                  { "type": "string", "enum": ["FedEx", "UPS", "USPS", "DHL", "OnTrac"] },
+    "service":                  { "type": "string" },
+    "tracking_number":          { "type": "string" },
+    "status":                   { "type": "string", "enum": ["label_created", "picked_up", "in_transit", "out_for_delivery", "delivered", "exception", "returned_to_sender"] },
+    "weight_kg":                { "type": "number", "minimum": 0 },
+    "length_cm":                { "type": "number", "minimum": 0 },
+    "width_cm":                 { "type": "number", "minimum": 0 },
+    "height_cm":                { "type": "number", "minimum": 0 },
+    "shipping_cost":            { "type": "number", "minimum": 0 },
+    "is_signature_required":    { "type": "boolean" },
+    "ship_date":                { "type": "string", "format": "date-time" },
+    "estimated_delivery_date":  { "type": "string", "format": "date-time" },
+    "actual_delivery_date":     { "type": ["string", "null"], "format": "date-time" },
+    "created_at":               { "type": "string", "format": "date-time" },
+    "updated_at":               { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

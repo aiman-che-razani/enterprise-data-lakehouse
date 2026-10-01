@@ -1,0 +1,45 @@
+---
+# Per-domain data-quality alerts. Layer-level rules live in pipeline_alerts.yml; thresholds and
+# `for:` durations match them so a layer alert and its domain alerts fire together.
+groups:
+  - name: pipeline.data_quality_domains
+    rules:
+      - alert: DomainDQPassRateLow
+        expr: retailnexus_dq_domain_pass_rate < 0.9
+        for: 20m
+        labels:
+          severity: warning
+          team: data-engineering
+        annotations:
+          summary: "DQ pass rate below 90% for {{ $labels.layer }}/{{ $labels.domain }}"
+          description: |
+            The latest run scored {{ $value | humanizePercentage }} for {{ $labels.layer }}/{{ $labels.domain }}.
+            Next: GET /quality/checks?layer={{ $labels.layer }}&domain={{ $labels.domain }}&status=failed
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-domaindqpassratelow"
+
+      - alert: DomainDQPassRateCritical
+        expr: retailnexus_dq_domain_pass_rate < 0.75
+        for: 15m
+        labels:
+          severity: critical
+          team: data-engineering
+        annotations:
+          summary: "DQ pass rate below 75% for {{ $labels.layer }}/{{ $labels.domain }}"
+          description: |
+            The latest run scored {{ $value | humanizePercentage }} for {{ $labels.layer }}/{{ $labels.domain }};
+            downstream layers may be reading bad data.
+            Next: confirm the quality gate blocked the next layer, then fix the source.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-domaindqpassratecritical"
+
+      - alert: DQMetricsStale
+        expr: absent(retailnexus_dq_domain_pass_rate)
+        for: 26h
+        labels:
+          severity: warning
+          team: data-engineering
+        annotations:
+          summary: "No DQ reports recorded for over 26 hours"
+          description: |
+            No per-domain DQ gauge has been exported for 26 hours (the data_quality DAG runs daily).
+            Next: check the DAG run and the API's metrics refresh.
+          runbook: "docs/troubleshooting/TROUBLESHOOTING.md#alert-dqmetricsstale"

@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a new domain, check, connector, or platform capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What can't be done today, and for whom?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Which layer(s) does it touch? See docs/developer/DEVELOPER.md for the "add a domain / check / endpoint" checklists.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Impact
+      options:
+        - label: Changes a published data contract (needs a version bump)
+        - label: Changes a warehouse DDL / migration
+        - label: Adds infrastructure (Terraform)

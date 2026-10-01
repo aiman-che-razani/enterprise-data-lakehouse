@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://retailnexus.com/schemas/products/v1",
+  "title": "Product",
+  "description": "Product catalog entry with pricing, category hierarchy, and supplier linkage",
+  "type": "object",
+  "required": [
+    "sku", "name", "category_l1", "category_l2",
+    "list_price", "cost_price", "is_active", "created_at"
+  ],
+  "properties": {
+    "sku":              { "type": "string" },
+    "name":             { "type": "string" },
+    "description":      { "type": ["string", "null"] },
+    "category_l1":      { "type": "string" },
+    "category_l2":      { "type": "string" },
+    "brand":            { "type": "string" },
+    "supplier_id":      { "type": ["string", "null"] },
+    "list_price":       { "type": "number", "minimum": 0, "exclusiveMinimum": 0 },
+    "cost_price":       { "type": "number", "minimum": 0 },
+    "margin_pct":       { "type": "number", "minimum": -1 },
+    "weight_kg":        { "type": "number", "minimum": 0 },
+    "is_active":        { "type": "boolean" },
+    "is_discontinued":  { "type": "boolean" },
+    "reorder_threshold":{ "type": "integer", "minimum": 0 },
+    "created_at":       { "type": "string", "format": "date-time" },
+    "updated_at":       { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

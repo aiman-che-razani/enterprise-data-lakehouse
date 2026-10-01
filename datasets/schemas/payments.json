@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://retailnexus.com/schemas/payments/v1",
+  "title": "Payment",
+  "description": "Payment transaction associated with an order",
+  "type": "object",
+  "required": [
+    "payment_id", "order_id", "customer_id", "payment_method",
+    "payment_processor", "amount", "currency", "status", "created_at"
+  ],
+  "properties": {
+    "payment_id":               { "type": "string", "pattern": "^PAY-" },
+    "order_id":                 { "type": "string", "pattern": "^ORD-[0-9]{10}$" },
+    "customer_id":              { "type": "string" },
+    "payment_method":           { "type": "string", "enum": ["credit_card", "debit_card", "paypal", "apple_pay", "gift_card", "buy_now_pay_later"] },
+    "payment_processor":        { "type": "string", "enum": ["Stripe", "Adyen", "Braintree", "Square", "PayPal"] },
+    "amount":                   { "type": "number", "minimum": 0 },
+    "currency":                 { "type": "string" },
+    "status":                   { "type": "string", "enum": ["paid", "failed", "refunded", "partially_refunded", "pending"] },
+    "card_last4":               { "type": ["string", "null"], "pattern": "^[0-9]{4}$" },
+    "card_network":             { "type": ["string", "null"], "enum": ["Visa", "Mastercard", "Amex", "Discover", null] },
+    "card_exp":                 { "type": ["string", "null"] },
+    "refund_amount":            { "type": "number", "minimum": 0 },
+    "refund_reason":            { "type": ["string", "null"] },
+    "failure_code":             { "type": ["string", "null"] },
+    "processor_transaction_id": { "type": ["string", "null"] },
+    "created_at":               { "type": "string", "format": "date-time" },
+    "updated_at":               { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}
